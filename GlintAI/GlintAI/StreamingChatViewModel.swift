@@ -20,30 +20,25 @@ class StreamingChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var currentInput: String = ""
     @Published var isTyping: Bool = false
-    
-    private var session: LanguageModelSession?
+
+    private var agent: ShoppingAgent?
     private var temporarySessionItems: [Product] = []
-    
+
     init() {
-        setupSession()
+        setupShoppingAgen()
     }
-    
-    private func setupSession() {
+
+    private func setupShoppingAgen() {
         // Tie into our local search catalog tool from the previous step
-        let catalogTool = StoreCatalogTool { [weak self] products in
+        let priceCheckTool = PriceCheckTool { [weak self] products in
             // Safely hop back to the Main Actor asynchronously
             Task { @MainActor [weak self] in
                 self?.temporarySessionItems.append(contentsOf: products)
             }
         }
-
-        // Initialize Apple's native session
-        self.session = LanguageModelSession(
-            tools: [catalogTool], 
-            instructions: "You are Sparky, an AI shopping helper. Keep responses short and conversational."
-        )
+        agent = ShoppingAgent(priceTool: priceCheckTool)
     }
-    
+
     func sendMessage() async {
         guard !currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let userText = currentInput
@@ -58,7 +53,7 @@ class StreamingChatViewModel: ObservableObject {
         let aiMessageIndex = messages.count
         messages.append(ChatMessage(isUser: false, text: ""))
         
-        guard let session = session else {
+        guard let agent else {
             isTyping = false
             return
         }
@@ -66,7 +61,7 @@ class StreamingChatViewModel: ObservableObject {
         do {
             // 3. RECIPY FOR SUCCESS: Use Apple's streaming API wrapper
             // Note: If using the beta/released API, verify if the stream endpoint is named `streamResponse` or `generateTokens`
-            let responseStream = session.streamResponse(to: userText)
+            let responseStream = try await agent.executeWorkFlow(query: userText)// session.streamResponse(to: userText)
             
             isTyping = false // Turn off global loading spinner since words are arriving
             

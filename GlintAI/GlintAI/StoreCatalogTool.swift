@@ -15,12 +15,13 @@ struct StoreSearchArguments: Equatable {
     var searchQuery: String
 }
 
+
 // 2. Conform your tool to the protocol completely
 struct StoreCatalogTool: Tool {
     
     // Explicit Protocol Associated Types
     typealias Arguments = StoreSearchArguments
-    typealias Output = String  // Can be a String or any Encodable / @Generable struct
+    typealias Output = [String]  // Can be a String or any Encodable / @Generable struct
     
     // Required protocol properties
     var name: String = "search_store_catalog"
@@ -30,21 +31,43 @@ struct StoreCatalogTool: Tool {
     var parameters: GenerationSchema {
         StoreSearchArguments.generationSchema
     }
-    
-    // Callback to update your SwiftUI logic
-    let onCatalogFound: @Sendable ([Product]) -> Void
-    
+
     // The required execution callback matching your associated types
     @MainActor
-    func call(arguments: StoreSearchArguments) async throws -> String {
+    func call(arguments: StoreSearchArguments) async throws -> [String] {
         let matches = MockStoreCatalog.search(query: arguments.searchQuery)
+        return matches.map { $0.id }
+    }
+}
 
-        onCatalogFound(matches)
+// Tool 2: Check live pricing & discount for specific item IDs
+@Generable
+struct PriceCheckArgs: Equatable {
+    @Guide(description: "List of SKU IDs to check price for.")
+    var itemIDs: [String]
+}
 
-        let encoder = JSONEncoder()
-        if let data = try? encoder.encode(matches), let jsonString = String(data: data, encoding: .utf8) {
-            return jsonString
+struct PriceCheckTool: Tool {
+    typealias Arguments = PriceCheckArgs
+    typealias Output = String
+    
+    var name = "check_price"
+    var description = "Retrieves item details like name, price, and current discount for the given item IDs."
+    var parameters: GenerationSchema { PriceCheckArgs.generationSchema }
+
+    // Callback to update your SwiftUI logic
+    let onCatalogFound: @Sendable ([Product]) -> Void
+
+    @MainActor
+    func call(arguments: PriceCheckArgs) async throws -> String {
+        let items = MockStoreCatalog.priceLookUp(itemIDs: arguments.itemIDs)
+
+        onCatalogFound(items)
+
+        let json = JSONEncoder()
+        guard let data = try? json.encode(items), let jsonData = String(data: data, encoding: .utf8) else {
+            return "[]"
         }
-        return "[]"
+        return jsonData
     }
 }
