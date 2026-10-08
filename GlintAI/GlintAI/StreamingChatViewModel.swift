@@ -21,7 +21,7 @@ class StreamingChatViewModel: ObservableObject {
     @Published var currentInput: String = ""
     @Published var isTyping: Bool = false
 
-    private var agent: ShoppingAgent?
+    private var agent: AutonomousShoppingAgent?//ShoppingAgent?
     private var temporarySessionItems: [Product] = []
 
     init() {
@@ -30,13 +30,20 @@ class StreamingChatViewModel: ObservableObject {
 
     private func setupShoppingAgen() {
         // Tie into our local search catalog tool from the previous step
-        let priceCheckTool = PriceCheckTool { [weak self] products in
+//        let priceCheckTool = PriceCheckTool { [weak self] products in
+//            // Safely hop back to the Main Actor asynchronously
+//            Task { @MainActor [weak self] in
+//                self?.temporarySessionItems.append(contentsOf: products)
+//            }
+//        }
+        agent = AutonomousShoppingAgent()
+        agent?.onCatalogFound = { products in
             // Safely hop back to the Main Actor asynchronously
             Task { @MainActor [weak self] in
                 self?.temporarySessionItems.append(contentsOf: products)
             }
         }
-        agent = ShoppingAgent(priceTool: priceCheckTool)
+//        agent = ShoppingAgent(priceTool: priceCheckTool)
     }
 
     func sendMessage() async {
@@ -61,7 +68,7 @@ class StreamingChatViewModel: ObservableObject {
         do {
             // 3. RECIPY FOR SUCCESS: Use Apple's streaming API wrapper
             // Note: If using the beta/released API, verify if the stream endpoint is named `streamResponse` or `generateTokens`
-            let responseStream = try await agent.executeWorkFlow(query: userText)// session.streamResponse(to: userText)
+            let responseStream = try await agent.processRequest(userText)// session.streamResponse(to: userText)
             
             isTyping = false // Turn off global loading spinner since words are arriving
             

@@ -56,13 +56,13 @@ struct PriceCheckTool: Tool {
     var parameters: GenerationSchema { PriceCheckArgs.generationSchema }
 
     // Callback to update your SwiftUI logic
-    let onCatalogFound: @Sendable ([Product]) -> Void
+    var onCatalogFound: (@Sendable([Product]) -> Void)?
 
     @MainActor
     func call(arguments: PriceCheckArgs) async throws -> String {
         let items = MockStoreCatalog.priceLookUp(itemIDs: arguments.itemIDs)
 
-        onCatalogFound(items)
+        onCatalogFound?(items)
 
         let json = JSONEncoder()
         guard let data = try? json.encode(items), let jsonData = String(data: data, encoding: .utf8) else {
