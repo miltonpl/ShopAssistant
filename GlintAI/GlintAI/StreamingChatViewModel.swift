@@ -20,35 +20,37 @@ class StreamingChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var currentInput: String = ""
     @Published var isTyping: Bool = false
-
-    private var agent: AutonomousShoppingAgent?//ShoppingAgent?
-    private var temporarySessionItems: [Product] = []
-
-    init() {
-        setupShoppingAgen()
-    }
-
-    private func setupShoppingAgen() {
-        // Tie into our local search catalog tool from the previous step
-//        let priceCheckTool = PriceCheckTool { [weak self] products in
-//            // Safely hop back to the Main Actor asynchronously
-//            Task { @MainActor [weak self] in
-//                self?.temporarySessionItems.append(contentsOf: products)
-//            }
-//        }
-        agent = AutonomousShoppingAgent()
-        agent?.onCatalogFound = { products in
-            // Safely hop back to the Main Actor asynchronously
-            Task { @MainActor [weak self] in
-                self?.temporarySessionItems.append(contentsOf: products)
+    @Published var autonomousAgent: Bool = false {
+        didSet {
+            if autonomousAgent != oldValue {
+                updateAgent()
             }
         }
-//        agent = ShoppingAgent(priceTool: priceCheckTool)
     }
 
-    func sendMessage() async {
-        guard !currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let userText = currentInput
+    private var agent: ShoppingAgentServices? = AutonomousShoppingAgent()
+    private var temporarySessionItems: [Product] = []
+    private var activeTask: Task<Void, Never>?
+
+    func handleSend() {
+        activeTask?.cancel()
+        activeTask = Task {
+            await sendMessage()
+        }
+    }
+
+    func updateAgent() {
+        if autonomousAgent {
+            agent = AutonomousShoppingAgent()
+        } else {
+            agent = StreamingShoppingAgent()
+        }
+    }
+
+    private func sendMessage() async {
+        let trimmedInput = currentInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedInput.isEmpty else { return }
+        let userText = trimmedInput
         
         // 1. Post user message and reset input bar
         messages.append(ChatMessage(isUser: true, text: userText))
@@ -61,21 +63,27 @@ class StreamingChatViewModel: ObservableObject {
         messages.append(ChatMessage(isUser: false, text: ""))
         
         guard let agent else {
+            messages[aiMessageIndex].text = "Error: Agent not initialized."
             isTyping = false
             return
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            await listenRecomendedItems(index: aiMessageIndex)
         }
 
         do {
             // 3. RECIPY FOR SUCCESS: Use Apple's streaming API wrapper
             // Note: If using the beta/released API, verify if the stream endpoint is named `streamResponse` or `generateTokens`
-            let responseStream = try await agent.processRequest(userText)// session.streamResponse(to: userText)
+            let responseStream = agent.processRequest(userText)// session.streamResponse(to: userText)
             
             isTyping = false // Turn off global loading spinner since words are arriving
             
             // 4. Concurrently consume the asynchronous token sequence
             for try await token in responseStream {
                 // Safely update the placeholder message block text line on the main thread
-                messages[aiMessageIndex].text = token.content
+                try Task.checkCancellation()
+                messages[aiMessageIndex].text = token
             }
 
             // 5. Once the stream ends, inject any structured product cards collected by our tools
@@ -83,6 +91,9 @@ class StreamingChatViewModel: ObservableObject {
                 messages[aiMessageIndex].items = temporarySessionItems
             }
 
+        } catch is CancellationError {
+            // Task cancelled by user or subsequent message; clear or mark canceled
+            messages[aiMessageIndex].text = "[Canceled]"
         } catch LanguageModelSession.GenerationError.assetsUnavailable{
             messages[aiMessageIndex].text = "❌ Apple Intelligence model assets are downloading or unavailable. Please ensure Apple Intelligence is active in Settings and your device has enough storage."
             isTyping = false
@@ -91,5 +102,13 @@ class StreamingChatViewModel: ObservableObject {
             isTyping = false
         }
         dump(messages)
+    }
+
+    private func listenRecomendedItems(index: Int) async {
+        guard let agent else { return }
+        for await products in agent.catalogStream {
+            temporarySessionItems.append(contentsOf: products)
+            messages[index].items = temporarySessionItems
+        }
     }
 }

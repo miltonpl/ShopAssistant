@@ -41,7 +41,7 @@ struct StreamingChatView: View {
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal, 4)
                 Button {
-                    Task { await viewModel.sendMessage() }
+                    viewModel.handleSend()
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 28))
@@ -54,6 +54,29 @@ struct StreamingChatView: View {
         }
         .navigationTitle("⚡ Live AI Stream")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    // Manually toggle your view model's state
+                    viewModel.autonomousAgent.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        // 💡 Fixed: Added the dot to "power.circle"
+                        Image(systemName: viewModel.autonomousAgent ? "power.circle.fill" : "power.circle")
+                        
+                        Text(viewModel.autonomousAgent ? "Autonomous On" : "Autonomous Off")
+                            .font(.footnote) // Small font fits perfectly in inline bars
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    // Optional: Keeps the look of a capsule-style button
+                    .background(viewModel.autonomousAgent ? Color.green.opacity(0.2) : Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                // Tint color for the icon/text
+                .tint(viewModel.autonomousAgent ? .green : .secondary)
+            }
+        }
     }
 }
 

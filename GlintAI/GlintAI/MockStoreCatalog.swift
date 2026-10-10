@@ -74,7 +74,7 @@ struct MockStoreCatalog {
         }
     }
 
-    static func priceLookUp(itemIDs: [String]) -> [Product] {
+    static func priceLookUp(itemIDs: [String]) async -> [Product] {
         let itemIDsSet = Set(itemIDs)
         var result = [Product]()
 
