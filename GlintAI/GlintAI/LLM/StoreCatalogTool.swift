@@ -15,10 +15,8 @@ struct StoreSearchArguments: Equatable {
     var searchQuery: String
 }
 
-
 // 2. Conform your tool to the protocol completely
 struct StoreCatalogTool: Tool {
-    
     // Explicit Protocol Associated Types
     typealias Arguments = StoreSearchArguments
     typealias Output = [String]  // Can be a String or any Encodable / @Generable struct
@@ -55,14 +53,13 @@ struct PriceCheckTool: Tool {
     var description = "Retrieves item details like name, price, and current discount for the given item IDs."
     var parameters: GenerationSchema { PriceCheckArgs.generationSchema }
 
-    // Callback to update your SwiftUI logic
-    var onCatalogFound: (@Sendable([Product]) -> Void)?
+    // Direct, thread-safe pipeline to push products back to agents's stream
+    let catalogContinuation: AsyncStream<[Product]>.Continuation
 
-    @MainActor
     func call(arguments: PriceCheckArgs) async throws -> String {
-        let items = MockStoreCatalog.priceLookUp(itemIDs: arguments.itemIDs)
+        let items = await MockStoreCatalog.priceLookUp(itemIDs: arguments.itemIDs)
 
-        onCatalogFound?(items)
+        catalogContinuation.yield(items)
 
         let json = JSONEncoder()
         guard let data = try? json.encode(items), let jsonData = String(data: data, encoding: .utf8) else {
