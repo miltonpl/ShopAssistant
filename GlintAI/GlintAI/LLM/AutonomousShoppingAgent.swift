@@ -25,11 +25,11 @@ class AutonomousShoppingAgent: ShoppingAgentServices {
         let (stream, continuation) = AsyncStream<[Product]>.makeStream()
         self.catalogStream = stream
         // 2. Pass the continuation directly to your stateless struct tool.
-        var priceCheckTool = PriceCheckTool(catalogContinuation: continuation)
+        let priceCheckTool = PriceCheckTool(catalogContinuation: continuation)
         // 3. Register your tools within your multi-turn language session
         self.session = LanguageModelSession(
             model: .default,
-            tools: [StoreCatalogTool(), priceCheckTool]
+            tools: [StoreCatalogTool(),priceCheckTool ]
         )
     }
 
