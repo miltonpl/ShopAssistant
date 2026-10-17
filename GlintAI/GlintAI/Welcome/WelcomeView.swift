@@ -4,7 +4,7 @@
 //
 //  Created by Milton Palaguachi on 10/1/26.
 //
-
+import ComposableArchitecture
 import SwiftUI
 
 enum DestinedScreen {
@@ -39,7 +39,18 @@ struct WelcomeView: View {
             .navigationDestination(for: DestinedScreen.self) { screen in
                 switch screen {
                 case .chat:
-                    StreamingChatView()
+//                    StreamingChatView()
+                    ChatAgentView(
+                        store: Store(
+                            initialState: ChatAgentFeature.State(),
+                            reducer: {
+                                ChatAgentFeature()
+                            },
+                            withDependencies: {
+                                $0.shoppingAgent = ShoppingAgentClient.liveValue
+                            }
+                        )
+                    )
                 case .setting:
                     StreamingChatView()
                 case .notification:

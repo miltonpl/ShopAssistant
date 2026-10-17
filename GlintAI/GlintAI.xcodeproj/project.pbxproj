@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		529C0E053083F4E400EE65E9 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 529C0E043083F4E400EE65E9 /* ComposableArchitecture */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		520D91A9306B74AE0086E5B9 /* GlintAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GlintAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				529C0E053083F4E400EE65E9 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = GlintAI;
 			packageProductDependencies = (
+				529C0E043083F4E400EE65E9 /* ComposableArchitecture */,
 			);
 			productName = GlintAI;
 			productReference = 520D91A9306B74AE0086E5B9 /* GlintAI.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 520D91A0306B74AE0086E5B9;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				529C0E033083F4E400EE65E9 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 520D91AA306B74AE0086E5B9 /* Products */;
 			projectDirPath = "";
@@ -332,6 +341,27 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		529C0E033083F4E400EE65E9 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.26.2;
+			};
+			traits = (
+			);
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		529C0E043083F4E400EE65E9 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 529C0E033083F4E400EE65E9 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 520D91A1306B74AE0086E5B9 /* Project object */;
 }
