@@ -11,26 +11,31 @@ import Foundation
 @DependencyClient
 struct ShoppingAgentClient: Sendable {
     // Exposes the live LLM token stream for a prompt
-    var prcessRequest: @Sendable (_ pront: String) -> AsyncThrowingStream<String, Error> = { _ in .finished() }
+    var processRequest: @Sendable (_ pront: String) -> AsyncThrowingStream<String, Error> = { _ in .finished() }
     // Exposes the underlying product catalog stream
     var catalogStream: @Sendable () -> AsyncStream<[Product]> = { .finished }
 }
+
 // Let's register our actual StreamingShoppingAget logic within the DependecyKey Layer
 // This keeps the implementation swappable for previews and unit tests:
 extension ShoppingAgentClient: DependencyKey {
     static let liveValue: ShoppingAgentClient = {
         // Instantiate your core agent machinery
         let agent = StreamingShoppingAgent()
-        return ShoppingAgentClient(prcessRequest: { prompt in
-            agent.processRequest(prompt)
-        }, catalogStream: {
-            agent.catalogStream
-        })
+
+        // Connect the single agent sream property to our broadcaster pipeline
+        return ShoppingAgentClient(
+            processRequest: { prompt in
+                agent.processRequest(prompt)
+            }, catalogStream: {
+                agent.catalogStream
+            }
+        )
     }()
 
     // Crucial for SwiftUI prviews or testing without making live LLM calls
     static let previewValue = ShoppingAgentClient(
-        prcessRequest: { pront in
+        processRequest: { pront in
             AsyncThrowingStream{ continuation in
                 continuation.yield("Hi")
                 continuation.yield("I found some ")

@@ -7,8 +7,6 @@
 
 import ComposableArchitecture
 import Foundation
-// The macro automatically regerates the conformance.
-// Do NOT add ": Reducer" or an extension implementing Reducer her.
 
 @Reducer
 struct ChatAgentFeature {
@@ -17,33 +15,36 @@ struct ChatAgentFeature {
         var currentInput = ""
         var coversationText = ""
         var discoveredProducts: [Product] = []
+        var pendingProducts: [Product] = [] // 1. Silent buffer for products arriving during a run
         var isStreaming = false
     }
     
     enum Action {
-        case task                       // Trigger when view appears to start background
-        case catalogUpdated([Product])  // Trigger when tools discover new products
+        case task                       // Runs once on appearance to listen to products
+        case catalogUpdated([Product])  // Fires whenever the agent discovers products
         case inputChanged(String)
         case sendButtonTapped
         case textTokenReceived(String)   // Handle incremental text updates from LLM
-        case streamFinished(Result<Void,Error>)
+        case streamFinished(Result<Void, Error>)
     }
     
     @Dependency(\.shoppingAgent) var shoppingAgent
+
     var body: some Reducer<State, Action> {
         Reduce<State, Action> { state, action in
             switch action {
             case .task:
-                // 1. Hook up the long-lived side channel stream for catalog items discovered by the agent tools
+                // 2. Long-lived background listener for catalog items
                 let fetchStream = shoppingAgent.catalogStream
                 return .run { send in
                     for await products in fetchStream() {
                         await send(.catalogUpdated(products))
                     }
                 }
+                
             case let .catalogUpdated(products):
-                dump(products)
-                state.discoveredProducts.append(contentsOf: products)
+                // 3. Silently buffer products as they are found by tools
+                state.pendingProducts.append(contentsOf: products)
                 return .none
             case let .inputChanged(input):
                 state.currentInput = input
@@ -55,9 +56,14 @@ struct ChatAgentFeature {
                 let prompt = state.currentInput
                 state.currentInput = ""
                 state.isStreaming = true
-                state.coversationText += "\nUser: \(prompt)\n Sparky: "
+                state.coversationText = "\nUser: \(prompt)\n Sparky: "
+
+                // Clear out pending products from the previous turn so we only show new ones
+                state.pendingProducts.removeAll()
+
                 // 2. Consume the shot-live LLM token stream within a .run loop
-                let excutableRequest = shoppingAgent.prcessRequest
+                let excutableRequest = shoppingAgent.processRequest
+    
                 return .run { send in
                     do {
                         let tokenStream = excutableRequest(prompt)
@@ -70,14 +76,19 @@ struct ChatAgentFeature {
                     }
                 }
             case let .textTokenReceived(token):
-                state.coversationText += token
+                state.coversationText = token
                 return .none
             case .streamFinished(.success):
                 state.isStreaming = false
+
+                // 4. 🔥 FLUSH THE BUFFER: Release all products collected during this turn to the UI!
+                state.discoveredProducts = state.pendingProducts
+                state.pendingProducts.removeAll()
                 return .none
             case let .streamFinished(.failure(error)):
                 state.isStreaming = false
-                state.coversationText += "\n[Error: \(error.localizedDescription)]"
+                state.pendingProducts.removeAll()
+                state.coversationText = "\n[Error: \(error.localizedDescription)]"
                 return .none
             }
         }

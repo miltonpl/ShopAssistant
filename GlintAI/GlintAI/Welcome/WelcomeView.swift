@@ -4,7 +4,6 @@
 //
 //  Created by Milton Palaguachi on 10/1/26.
 //
-import ComposableArchitecture
 import SwiftUI
 
 enum DestinedScreen {
@@ -15,6 +14,7 @@ enum DestinedScreen {
 
 struct WelcomeView: View {
     @State private var navigationPath = [DestinedScreen]()
+
 
     var body: some View {
         NavigationStack(path: $navigationPath) { // Wraps the root view to enable navigation
@@ -39,18 +39,8 @@ struct WelcomeView: View {
             .navigationDestination(for: DestinedScreen.self) { screen in
                 switch screen {
                 case .chat:
-//                    StreamingChatView()
-                    ChatAgentView(
-                        store: Store(
-                            initialState: ChatAgentFeature.State(),
-                            reducer: {
-                                ChatAgentFeature()
-                            },
-                            withDependencies: {
-                                $0.shoppingAgent = ShoppingAgentClient.liveValue
-                            }
-                        )
-                    )
+                    // StreamingChatView()
+                    ChatAgentView()
                 case .setting:
                     StreamingChatView()
                 case .notification:
