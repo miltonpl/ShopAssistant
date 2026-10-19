@@ -8,7 +8,7 @@
 import Foundation
 import FoundationModels
 
-class StreamingShoppingAgent: ShoppingAgentServices {
+final class StreamingShoppingAgent: Sendable, ShoppingAgentServices {
     private let searchTool: StoreCatalogTool
     private var priceTool: PriceCheckTool
     let catalogStream: AsyncStream<[Product]>
